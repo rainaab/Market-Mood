@@ -22,15 +22,18 @@ This directory contains the source code, datasets, and generated outputs used in
 | Version Control | Git |
 | Package Manager | pip |
 
-### Python Libraries
+### Python Libraries and Versions
 
-The project uses the following libraries:
+The project was developed and tested using Python 3.9.6
+with the following dependencies:
 
-- **pandas:** Data loading, preprocessing, and analysis
-- **NumPy:** Numerical calculations and array operations
-- **Matplotlib:** Data visualization
-- **scikit-learn:** Standardization, K-Means, hierarchical clustering, and evaluation metrics
-- **SciPy:** Scientific computing and clustering-related functionality
+| Library | Version | Purpose |
+|---|---|---|
+| pandas | 2.2.3 | Data preprocessing and analysis |
+| NumPy | 2.0.2 | Numerical calculations |
+| Matplotlib | 3.9.3 | Data visualization |
+| scikit-learn | 1.6.1 | Clustering and evaluation |
+| SciPy | 1.13.1 | Scientific computing |
 
 The required packages are listed in the root-level `requirements.txt` file.
 
