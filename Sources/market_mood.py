@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import adjusted_rand_score
 
 # 1. load data
 df = pd.read_csv("data/raw/SP500.csv")
@@ -302,4 +304,231 @@ plt.savefig(
     dpi=300,
     bbox_inches="tight"
 )
+plt.show()
+
+
+# ---------------------------------------------------------------------------------------
+# 9. experiment 2, feature removal
+
+# remove momentum to reduce feature redundancy
+reduced_features = [
+    "daily_return",
+    "return_5d",
+    "return_20d",
+    "volatility_20d"
+]
+
+# standardize the reduced feature set
+X_reduced = model_df[reduced_features]
+
+reduced_scaler = StandardScaler()
+X_reduced_scaled = reduced_scaler.fit_transform(X_reduced)
+
+# evaluate K-Means using the reduced features
+print("\nExperiment 2: Reduced Feature K-Means")
+
+for k in range(2, 7):
+
+    reduced_kmeans = KMeans(
+        n_clusters=k,
+        random_state=42,
+        n_init=10
+    )
+
+    reduced_labels = reduced_kmeans.fit_predict(
+        X_reduced_scaled
+    )
+
+    reduced_score = silhouette_score(
+        X_reduced_scaled,
+        reduced_labels
+    )
+
+    print(
+        f"k = {k}: "
+        f"Inertia = {reduced_kmeans.inertia_:.2f}, "
+        f"Silhouette = {reduced_score:.3f}"
+    )
+
+# ---------------------------------------------------------------------------------------
+# 10. experiment 3: hierarchical clustering
+print("\nExperiment 3: Hierarchical Clustering")
+
+for k in range(2, 7):
+
+    hierarchical = AgglomerativeClustering(
+        n_clusters=k,
+        linkage="ward"
+    )
+
+    hierarchical_labels = hierarchical.fit_predict(
+        X_scaled
+    )
+
+    score = silhouette_score(
+        X_scaled,
+        hierarchical_labels
+    )
+
+    print(
+        f"k = {k}: "
+        f"Silhouette = {score:.3f}"
+    )
+
+# compare K-Means and hierarchical clustering at k=2
+hierarchical_final = AgglomerativeClustering(
+    n_clusters=2,
+    linkage="ward"
+)
+
+hierarchical_labels = hierarchical_final.fit_predict(
+    X_scaled
+)
+
+agreement = adjusted_rand_score(
+    model_df["cluster"],
+    hierarchical_labels
+)
+
+print(
+    "\nAdjusted Rand Index (K-Means vs Hierarchical):",
+    round(agreement, 3)
+)
+
+
+# ---------------------------------------------------------------------------------------
+# 11. hierarchical regime analysis
+# store hierarchical cluster assignments
+model_df["hierarchical_cluster"] = hierarchical_labels
+
+# count observations in each cluster
+print("\nHierarchical cluster counts:")
+print(
+    model_df["hierarchical_cluster"]
+    .value_counts()
+    .sort_index()
+)
+
+# calculate average characteristics
+hierarchical_summary = model_df.groupby(
+    "hierarchical_cluster"
+)[feature_columns].mean()
+
+# convert decimal returns and volatility to percentages
+hierarchical_summary *= 100
+
+print("\nHierarchical cluster characteristics (%):")
+print(hierarchical_summary.round(2))
+
+# compare assignments between algorithms
+print("\nK-Means vs Hierarchical assignments:")
+print(
+    pd.crosstab(
+        model_df["cluster"],
+        model_df["hierarchical_cluster"]
+    )
+)
+
+# ---------------------------------------------------------------------------------------
+# 12. analyze cluster disagreements
+
+# identify observations assigned differently
+disagreements = model_df[
+    model_df["cluster"] !=
+    model_df["hierarchical_cluster"]
+].copy()
+
+print("\nNumber of disagreements:")
+print(len(disagreements))
+
+# examine the average characteristics
+disagreement_summary = (
+    disagreements[feature_columns].mean() * 100
+)
+
+print("\nDisagreement characteristics (%):")
+print(disagreement_summary.round(2))
+
+# examine the dates and market values
+print("\nFirst 10 disagreement observations:")
+print(
+    disagreements[
+        ["observation_date", "SP500"] +
+        feature_columns
+    ].head(10).to_string(index=False)
+)
+
+# ---------------------------------------------------------------------------------------
+# 13. final market mood visualization
+
+import numpy as np
+
+# assign comparison-based market conditions
+conditions = [
+    (model_df["cluster"] == 0) &
+    (model_df["hierarchical_cluster"] == 0),
+
+    (model_df["cluster"] == 1) &
+    (model_df["hierarchical_cluster"] == 0),
+
+    (model_df["cluster"] == 1) &
+    (model_df["hierarchical_cluster"] == 1)
+]
+
+labels = [
+    "Growth / Stable",
+    "Mild Decline / Transitional",
+    "Pronounced Decline / Stress"
+]
+
+model_df["market_mood"] = np.select(
+    conditions,
+    labels,
+    default="Unclassified"
+)
+
+# visualize the comparison-based categories
+plt.figure(figsize=(15, 7))
+
+colors = {
+    "Growth / Stable": "green",
+    "Mild Decline / Transitional": "orange",
+    "Pronounced Decline / Stress": "red"
+}
+
+plt.plot(
+    model_df["observation_date"],
+    model_df["SP500"],
+    color="gray",
+    alpha=0.3
+)
+
+for mood in labels:
+    subset = model_df[
+        model_df["market_mood"] == mood
+    ]
+
+    plt.scatter(
+        subset["observation_date"],
+        subset["SP500"],
+        s=14,
+        color=colors[mood],
+        label=mood
+    )
+
+plt.title(
+    "Market Mood: Comparison-Based Market Conditions"
+)
+plt.xlabel("Date")
+plt.ylabel("S&P 500 Index")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+
+plt.savefig(
+    "outputs/figures/final_market_moods.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
 plt.show()
