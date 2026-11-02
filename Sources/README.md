@@ -95,6 +95,17 @@ The original dataset contained 1,305 observations. During preprocessing, 50 obse
 
 After feature engineering and removal of incomplete rolling-window observations, the final modeling dataset contained **1,235 observations**.
 
+### Dataset Availability
+
+The original S&P 500 dataset is included in the
+`Sources/data/raw/` directory.
+
+The dataset contains the historical observations used
+for preprocessing, feature engineering, exploratory
+data analysis, and clustering experiments.
+
+Processed data is stored in `Sources/data/processed/`.
+
 ### Engineered Features
 
 | Feature | Description |
